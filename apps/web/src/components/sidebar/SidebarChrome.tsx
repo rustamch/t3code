@@ -1,4 +1,10 @@
-import { ArrowLeftIcon, ArrowRightIcon, ChartNoAxesColumnIcon, SettingsIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  ChartNoAxesColumnIcon,
+  FlameIcon,
+  SettingsIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { T, useGT } from "gt-react";
 import { memo } from "react";
@@ -251,6 +257,10 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     closeMobileSidebar();
     void navigate({ to: "/issues", search: readIssueListPreferences() });
   };
+  const handleHearthClick = () => {
+    closeMobileSidebar();
+    void navigate({ to: "/hearth" });
+  };
   const handleSettingsClick = () => {
     closeMobileSidebar();
     void navigate({ to: "/settings" });
@@ -281,6 +291,11 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
         </SidebarMenuItem>
       ) : (
         <>
+          <SidebarUtilityItem
+            icon={<FlameIcon />}
+            label={gt("Hearth")}
+            onClick={handleHearthClick}
+          />
           <SidebarUtilityItem
             icon={<SettingsIcon />}
             label={gt("Settings")}

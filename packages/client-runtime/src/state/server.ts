@@ -1661,6 +1661,22 @@ export function createServerEnvironmentAtoms<R, E>(
       refreshIntervalMs: 5_000,
       idleTtlMs: 0,
     }),
+    hearthOverview: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:hearth:overview",
+      tag: WS_METHODS.hearthOverview,
+      staleTimeMs: 3_000,
+      refreshIntervalMs: 5_000,
+      idleTtlMs: 0,
+    }),
+    hearthOpenCentral: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:hearth:open-central",
+      tag: WS_METHODS.hearthOpenCentral,
+      concurrency: { mode: "singleFlight", key: ({ environmentId }) => environmentId },
+    }),
+    hearthLaunch: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:hearth:launch",
+      tag: WS_METHODS.hearthLaunch,
+    }),
     searchAcpRegistry: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:acp-registry:search",
       tag: WS_METHODS.serverSearchAcpRegistry,

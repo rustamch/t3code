@@ -46,6 +46,12 @@ import * as Rpc from "effect/rpc/Rpc";
 import * as RpcGroup from "effect/rpc/RpcGroup";
 import * as RpcMiddleware from "effect/rpc/RpcMiddleware";
 import { IsoDateTime, NonNegativeInt, TrimmedNonEmptyString } from "./baseSchemas.ts";
+import {
+  HearthError,
+  HearthLaunchInput,
+  HearthOverviewResult,
+  HearthThreadResult,
+} from "./hearth.ts";
 import { SecretSourceCheckResult } from "./settingsSecretValue.ts";
 import { SecretReference } from "./secretReference.ts";
 import {
@@ -628,6 +634,9 @@ export const WS_METHODS = {
   guestShareCreate: "guestShare.create",
   scheduledTasksListWebhookDeliveries: "scheduledTasks.listWebhookDeliveries",
   scheduledTasksGetWebhookDelivery: "scheduledTasks.getWebhookDelivery",
+  hearthOverview: "hearth.overview",
+  hearthOpenCentral: "hearth.openCentral",
+  hearthLaunch: "hearth.launch",
 
   cloudGetRelayClientStatus: "cloud.getRelayClientStatus",
   cloudInstallRelayClient: "cloud.installRelayClient",
@@ -2360,6 +2369,24 @@ const WsScheduledTasksGetWebhookDeliveryRpc = Rpc.make(
   },
 );
 
+const WsHearthOverviewRpc = Rpc.make(WS_METHODS.hearthOverview, {
+  payload: Schema.Struct({}),
+  success: HearthOverviewResult,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsHearthOpenCentralRpc = Rpc.make(WS_METHODS.hearthOpenCentral, {
+  payload: Schema.Struct({}),
+  success: HearthThreadResult,
+  error: Schema.Union([HearthError, EnvironmentAuthorizationError]),
+});
+
+const WsHearthLaunchRpc = Rpc.make(WS_METHODS.hearthLaunch, {
+  payload: HearthLaunchInput,
+  success: HearthThreadResult,
+  error: Schema.Union([HearthError, EnvironmentAuthorizationError]),
+});
+
 const WsSubscribeAuthAccessRpc = Rpc.make(WS_METHODS.subscribeAuthAccess, {
   payload: Schema.Struct({}),
   success: AuthAccessStreamEvent,
@@ -2471,6 +2498,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsAgentFeedbackAnswerRequestRpc,
   WsScheduledTasksListWebhookDeliveriesRpc,
   WsScheduledTasksGetWebhookDeliveryRpc,
+  WsHearthOverviewRpc,
+  WsHearthOpenCentralRpc,
+  WsHearthLaunchRpc,
   WsServerReportClientActivityRpc,
   WsCloudGetRelayClientStatusRpc,
   WsCloudInstallRelayClientRpc,

@@ -127,6 +127,7 @@ import * as CommandOutputHub from "./orchestration-v2/CommandOutputHub.ts";
 import * as McpAppRequests from "./mcpApps/McpAppRequests.ts";
 import * as McpSignIn from "./mcpApps/McpSignIn.ts";
 import * as ProviderSessionManager from "./orchestration-v2/ProviderSessionManager.ts";
+import * as HearthService from "./hearth/HearthService.ts";
 import * as ThreadLaunchService from "./orchestration-v2/ThreadLaunchService.ts";
 import * as ThreadMessageIntake from "./orchestration-v2/ThreadMessageIntake.ts";
 import * as DocumentText from "./provider/DocumentText.ts";
@@ -1569,6 +1570,7 @@ export const layerWsRpc = (
       const storageCleanup = yield* StorageCleanup.StorageCleanup;
       const databaseStorage = yield* DatabaseStorage.DatabaseStorage;
       const serverSettings = yield* ServerSettings.ServerSettingsService;
+      const hearth = yield* HearthService.make;
       const secretResolver = yield* SecretResolver.SecretResolver;
       const peerLinks = yield* PeerLinks.PeerLinks;
       const peerLinkRequests = yield* PeerLinkRequests.PeerLinkRequests;
@@ -2399,6 +2401,9 @@ export const layerWsRpc = (
           Effect.annotateCurrentSpan({ "scheduled_task.id": input.id }).pipe(
             Effect.andThen(scheduledTasks.getWebhookDelivery(input)),
           ),
+        [WS_METHODS.hearthOverview]: (_input) => hearth.overview,
+        [WS_METHODS.hearthOpenCentral]: (_input) => hearth.openCentral,
+        [WS_METHODS.hearthLaunch]: (input) => hearth.launch(input),
         [WS_METHODS.serverProbe]: (_input) =>
           Effect.map(DateTime.now, (now) => ({ serverTime: DateTime.formatIso(now) })),
         [WS_METHODS.serverGetConfig]: (_input) =>
