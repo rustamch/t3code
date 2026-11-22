@@ -104,7 +104,7 @@ export const make = Effect.gen(function* () {
 
   const home = NodeOS.homedir();
   const store =
-    (yield* optionalEnv("HEARTH_STORE")) ?? path.join(home, ".local/share/hearth/store.sqlite");
+    (yield* optionalEnv("HEARTH_STORE")) ?? path.join(config.baseDir, "hearth", "store.sqlite");
   const configuredBin = yield* optionalEnv("HEARTH_BIN");
   const cargoBin = path.join(home, ".cargo/bin/hearth");
 
