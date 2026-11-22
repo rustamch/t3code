@@ -1,7 +1,7 @@
 import type { HearthAgent, HearthOverview } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { groupHearthOverview, hearthThreadId } from "./hearthGroups";
+import { groupHearthOverview, hearthThreadId, quickLaunchTitle } from "./hearthGroups";
 
 const project = (id: string, status = "active") => ({
   id,
@@ -30,7 +30,12 @@ describe("groupHearthOverview", () => {
       schema: "hearth.overview/1",
       owner: "alex",
       coordinator: null,
-      projects: [project("idle"), project("paused", "paused"), project("waiting")],
+      projects: [
+        project("idle"),
+        project("paused", "paused"),
+        project("random"),
+        project("waiting"),
+      ],
       agents: [agent("running", "working")],
       inbox: [
         {
@@ -46,8 +51,19 @@ describe("groupHearthOverview", () => {
       ],
     };
     const groups = groupHearthOverview(overview);
-    expect(groups.map((group) => group.id)).toEqual(["waiting", "running", "idle", "paused"]);
-    expect(groups[1]?.project).toBeNull();
+    expect(groups.map((group) => group.id)).toEqual([
+      "random",
+      "waiting",
+      "running",
+      "idle",
+      "paused",
+    ]);
+    expect(groups[2]?.project).toBeNull();
+  });
+
+  it("titles a quick launch from its first line, within the limit", () => {
+    expect(quickLaunchTitle("  rename the file\nand more")).toBe("rename the file");
+    expect(quickLaunchTitle("x".repeat(80))).toBe(`${"x".repeat(59)}…`);
   });
 
   it("reads only T3 session refs", () => {

@@ -19,6 +19,8 @@ import {
   groupHearthOverview,
   hearthThreadId,
   isOpenAgent,
+  quickLaunchTitle,
+  RANDOM_PROJECT_ID,
   type HearthProjectGroup,
 } from "./hearthGroups";
 
@@ -49,6 +51,26 @@ function HearthProjectCard({
   const [busy, setBusy] = useState(false);
   const launch = useAtomCommand(serverEnvironment.hearthLaunch, { reportFailure: false });
   const open = group.agents.filter(isOpenAgent);
+  const isRandom = group.id === RANDOM_PROJECT_ID;
+
+  const quickLaunch = async (event: FormEvent) => {
+    event.preventDefault();
+    const text = task.trim();
+    if (text === "" || busy) return;
+    setBusy(true);
+    setError(null);
+    const result = await launch({
+      environmentId,
+      input: { project: group.id, title: quickLaunchTitle(text), task: text },
+    });
+    setBusy(false);
+    if (result._tag === "Success") {
+      setTask("");
+      onOpen(environmentId, result.value.threadId);
+      return;
+    }
+    setError(failureMessage(result, gt("Could not start the session.")));
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -85,10 +107,12 @@ function HearthProjectCard({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {group.project?.status ? <Badge variant="outline">{group.project.status}</Badge> : null}
-          <Button size="xs" variant="outline" onClick={() => setStarting((value) => !value)}>
-            <PlusIcon />
-            <T>Start work</T>
-          </Button>
+          {isRandom ? null : (
+            <Button size="xs" variant="outline" onClick={() => setStarting((value) => !value)}>
+              <PlusIcon />
+              <T>Start work</T>
+            </Button>
+          )}
         </div>
       </div>
       {group.project?.now ? (
@@ -120,6 +144,22 @@ function HearthProjectCard({
             );
           })}
         </ul>
+      ) : null}
+      {isRandom ? (
+        <form className="mt-3 space-y-2" onSubmit={(event) => void quickLaunch(event)}>
+          <div className="flex items-center gap-2">
+            <Input
+              aria-label={gt("A little thing to do")}
+              placeholder={gt("A little thing to do…")}
+              value={task}
+              onChange={(event) => setTask(event.target.value)}
+            />
+            <Button size="sm" type="submit" disabled={busy || task.trim() === ""}>
+              {busy ? gt("Starting…") : gt("Launch")}
+            </Button>
+          </div>
+          {error ? <p className="text-destructive-foreground text-xs">{error}</p> : null}
+        </form>
       ) : null}
       {starting ? (
         <form className="mt-3 space-y-2" onSubmit={(event) => void submit(event)}>

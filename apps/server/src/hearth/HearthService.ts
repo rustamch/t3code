@@ -3,6 +3,7 @@ import {
   HearthError,
   HearthOverview,
   type HearthLaunchInput,
+  type HearthOverview as HearthOverviewDocument,
   type HearthOverviewResult,
   ProjectId,
   ThreadId,
@@ -35,6 +36,23 @@ const decodeLaunched = Schema.decodeUnknownEffect(
 const READ_TIMEOUT = Duration.seconds(15);
 const LAUNCH_TIMEOUT = Duration.minutes(2);
 const MAX_CENTRAL_GENERATIONS = 100;
+const RANDOM_PROJECT_ID = "random";
+const RANDOM_PROJECT_NOTE = `---
+title: Random
+status: active
+repos: []
+paths: []
+links: []
+---
+
+## What it is
+
+Little one-off things that do not belong to another project.
+
+## Now
+
+## Blocked on
+`;
 
 const isHearthError = Schema.is(HearthError);
 const failure = (message: string) => new HearthError({ message });
@@ -93,6 +111,7 @@ export const make = Effect.gen(function* () {
   const run = Effect.fn("HearthService.run")(function* (
     args: ReadonlyArray<string>,
     timeout: Duration.Duration,
+    input?: string,
   ) {
     const program = yield* bin;
     const finished = yield* Effect.gen(function* () {
@@ -100,7 +119,7 @@ export const make = Effect.gen(function* () {
         ChildProcess.make(program, [...args], {
           shell: false,
           detached: false,
-          stdin: "ignore",
+          stdin: input === undefined ? "ignore" : Stream.make(new TextEncoder().encode(input)),
           stdout: "pipe",
           stderr: "pipe",
           extendEnv: true,
@@ -136,7 +155,63 @@ export const make = Effect.gen(function* () {
     );
   });
 
+  // A marker, so a Random project the owner deleted stays deleted.
+  const randomMarker = path.join(config.baseDir, "hearth", "random-project-created");
+
+  const ensureRandomProject = Effect.fn("HearthService.ensureRandomProject")(function* (
+    current: HearthOverviewDocument,
+  ) {
+    if (yield* fileSystem.exists(randomMarker)) return current;
+    if (!current.projects.some((project) => project.id === RANDOM_PROJECT_ID)) {
+      // Without `--expect`, Hearth refuses to replace a note that already exists.
+      yield* run(
+        ["write", `projects/${RANDOM_PROJECT_ID}.md`, "--store", store],
+        READ_TIMEOUT,
+        RANDOM_PROJECT_NOTE,
+      );
+    }
+    const workspaceRoot = path.join(
+      path.dirname(store),
+      "plugins",
+      "agents",
+      "projects",
+      RANDOM_PROJECT_ID,
+    );
+    yield* fileSystem.makeDirectory(workspaceRoot, { recursive: true });
+    const id = yield* uuid;
+    const bootstrapped = yield* projects
+      .bootstrap({
+        commandId: CommandId.make(`hearth-random-project:${id}`),
+        projectId: ProjectId.make(id),
+        title: "Random",
+        workspaceRoot,
+      })
+      .pipe(
+        Effect.catchTags({
+          ProjectConflictError: (conflict) =>
+            Effect.succeed({ project: { id: conflict.conflictingProjectId }, created: false }),
+        }),
+      );
+    if (bootstrapped.created) {
+      yield* projects.update({
+        commandId: CommandId.make(`hearth-random-pin:${id}`),
+        projectId: bootstrapped.project.id,
+        pinned: true,
+      });
+    }
+    yield* fileSystem.makeDirectory(path.dirname(randomMarker), { recursive: true });
+    yield* fileSystem.writeFileString(randomMarker, "");
+    return yield* readOverview;
+  });
+
   const overview: Effect.Effect<HearthOverviewResult> = readOverview.pipe(
+    Effect.flatMap((value) =>
+      ensureRandomProject(value).pipe(
+        Effect.catchCause((cause) =>
+          Effect.logWarning("Could not create the Random project", cause).pipe(Effect.as(value)),
+        ),
+      ),
+    ),
     Effect.map((value) => ({ state: "ready" as const, overview: value })),
     Effect.catch((error: HearthError) =>
       Effect.succeed({ state: "unavailable" as const, reason: error.message }),

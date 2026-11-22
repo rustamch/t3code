@@ -12,6 +12,8 @@ export interface HearthProjectGroup {
   readonly inbox: ReadonlyArray<HearthInboxItem>;
 }
 
+export const RANDOM_PROJECT_ID = "random";
+
 const OPEN_STATUS = new Set(["launched", "working", "blocked"]);
 
 export const isOpenAgent = (agent: HearthAgent) => OPEN_STATUS.has(agent.status);
@@ -28,14 +30,22 @@ export function groupHearthOverview(overview: HearthOverview): ReadonlyArray<Hea
     inbox: overview.inbox.filter((item) => item.project === id),
   }));
   const rank = (group: HearthProjectGroup) =>
-    group.inbox.length > 0
-      ? 0
-      : group.agents.some(isOpenAgent)
-        ? 1
-        : group.project?.status === "active"
-          ? 2
-          : 3;
+    group.id === RANDOM_PROJECT_ID
+      ? -1
+      : group.inbox.length > 0
+        ? 0
+        : group.agents.some(isOpenAgent)
+          ? 1
+          : group.project?.status === "active"
+            ? 2
+            : 3;
   return groups.toSorted((a, b) => rank(a) - rank(b) || a.id.localeCompare(b.id));
+}
+
+/** A session title from a one-line task. */
+export function quickLaunchTitle(task: string) {
+  const line = task.trim().split("\n", 1)[0] ?? "";
+  return line.length <= 60 ? line : `${line.slice(0, 59).trimEnd()}…`;
 }
 
 /** The thread id in a `t3:<id>` session ref, or null for a session outside T3. */
