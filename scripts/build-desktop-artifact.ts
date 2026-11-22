@@ -3954,7 +3954,8 @@ const buildDesktopArtifactUnlocked = Effect.fn("buildDesktopArtifactUnlocked")(f
       ? path.join(stageAppDir, WINDOWS_SERVER_RESOURCE_SOURCE_DIR, WINDOWS_SERVER_ASAR_RESOURCE)
       : undefined;
   const stagePackageJson: StagePackageJson = {
-    name: "t3code",
+    // Electron names its Keychain key after this, so it must differ from official T3.
+    name: "t3hearth",
     version: appVersion,
     buildVersion: appVersion,
     t3codeCommitHash: commitHash,
