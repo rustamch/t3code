@@ -7,6 +7,7 @@ import {
   ProjectId,
   RunId,
   ThreadId,
+  ThreadMetadataMcpUpdateResult,
   TrimmedNonEmptyString,
   type OrchestratorMcpThreadDetail,
   type OrchestratorMcpThreadListItem,
@@ -1024,6 +1025,48 @@ const threadSendCommand = Command.make("send", {
   ),
 );
 
+const threadRenameCommand = Command.make("rename", {
+  ...projectLocationFlags,
+  thread: threadArgument,
+  title: Flag.String("title").pipe(Flag.withDescription("The new title.")),
+  ifTitle: Flag.String("if-title").pipe(
+    Flag.withDescription("Rename only while the thread still has this exact title."),
+    Flag.optional,
+  ),
+  json: jsonFlag,
+}).pipe(
+  Command.withDescription("Rename a thread."),
+  Command.withHandler((flags) =>
+    Effect.gen(function* () {
+      const threadId = yield* decodeThreadId(flags.thread);
+      yield* withThreadTools(
+        flags,
+        Effect.fn("cli.thread.rename")(function* (tools) {
+          if (Option.isSome(flags.ifTitle)) {
+            const { thread } = yield* tools.call(
+              "t3_thread_read",
+              { threadId, limit: 1, runLimit: 1 },
+              OrchestratorMcpThreadReadResult,
+            );
+            if (thread.title !== flags.ifTitle.value) {
+              yield* flags.json
+                ? printJson({ threadId, renamed: false })
+                : Console.log("Left as it is.");
+              return;
+            }
+          }
+          yield* tools.call(
+            "t3_thread_update",
+            { threadId, action: "rename", title: flags.title },
+            ThreadMetadataMcpUpdateResult,
+          );
+          yield* flags.json ? printJson({ threadId, renamed: true }) : Console.log("Renamed.");
+        }),
+      );
+    }).pipe(reportThreadErrors),
+  ),
+);
+
 const threadShowCommand = Command.make("show", {
   ...projectLocationFlags,
   thread: threadArgument,
@@ -1093,6 +1136,7 @@ export const threadCommand = Command.make("thread").pipe(
     threadListCommand,
     threadStartCommand,
     threadSendCommand,
+    threadRenameCommand,
     threadShowCommand,
   ]),
 );
