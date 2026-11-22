@@ -98,22 +98,17 @@ export function SidebarCentralSession(props: {
       aria-current={isActive ? "page" : undefined}
       onClick={() => void open()}
       className={cn(
-        "mb-2 flex w-full cursor-pointer items-center gap-2.5 rounded-lg border p-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+        "mb-2 flex w-full cursor-pointer items-center gap-2.5 rounded-lg border px-2 py-1.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
         isActive
           ? "border-primary/70 bg-primary/20"
           : "border-primary/30 bg-primary/10 hover:border-primary/50 hover:bg-primary/15",
       )}
     >
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
-        <FlameIcon className="size-4" />
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
+        <FlameIcon className="size-3.5" />
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-semibold text-sidebar-foreground text-sm">
-          {gt("Central session")}
-        </span>
-        <span className="block truncate text-sidebar-muted-foreground text-xs">
-          {gt("Above every project")}
-        </span>
+      <span className="min-w-0 flex-1 truncate font-semibold text-sidebar-foreground text-sm">
+        {gt("Central session")}
       </span>
       {dot ? (
         <span className={cn("size-2 shrink-0 rounded-full", DOT_CLASS_NAME[dot])} aria-hidden />
