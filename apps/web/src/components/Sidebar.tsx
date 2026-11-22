@@ -257,6 +257,7 @@ import {
 } from "./ui/combobox";
 import { SidebarContent, SidebarGroup, useSidebar } from "./ui/sidebar";
 import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
+import { isCentralThread, SidebarCentralSession } from "./sidebar/SidebarCentralSession";
 import { SidebarHeaderIconButton, SidebarThreadHeader } from "./sidebar/SidebarThreadHeader";
 import { TooltipProvider } from "./ui/tooltip";
 import {
@@ -1316,6 +1317,8 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     },
   );
 
+  // The central session has its own row above the project folders.
+  const projectThreads = listedThreads.filter((thread) => !isCentralThread(thread));
   const {
     workingShelfEnabled,
     pinnedThreads,
@@ -1358,7 +1361,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     serverConfigs,
     connectedEnvironmentIds,
     optimisticDrop,
-    threads: listedThreads,
+    threads: projectThreads,
     delegatedUnderParent,
     routeRowThreadKey,
     departingThreadKey,
@@ -3058,6 +3061,13 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
         className="min-h-full"
         fixedHeader={
           <SidebarGroup className="z-[1]">
+            <SidebarCentralSession
+              threads={listedThreads}
+              routeThreadKey={routeRowThreadKey}
+              onNavigate={() => {
+                if (isMobile) setOpenMobile(false);
+              }}
+            />
             <SidebarThreadHeader
               hasProjects={projectGroups.length > 0}
               projectScope={
