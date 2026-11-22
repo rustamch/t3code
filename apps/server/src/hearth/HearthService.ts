@@ -221,7 +221,7 @@ export const make = Effect.gen(function* () {
   const liveThread = (threadId: ThreadId) =>
     threads.getThreadShell(threadId).pipe(
       Effect.map((shell) => (shell !== null && shell.deletedAt === null ? shell : null)),
-      Effect.mapError(() => failure("Could not read the central session.")),
+      Effect.mapError(() => failure("Could not read Keeper.")),
     );
 
   const reopen = (threadId: ThreadId, archivedAt: unknown) =>
@@ -235,7 +235,7 @@ export const make = Effect.gen(function* () {
           }),
         ).pipe(
           Effect.asVoid,
-          Effect.mapError(() => failure("Could not reopen the central session.")),
+          Effect.mapError(() => failure("Could not reopen Keeper.")),
         );
 
   const centralProject = Effect.gen(function* () {
@@ -249,7 +249,7 @@ export const make = Effect.gen(function* () {
       fileSystem.makeDirectory(workspaceRoot, { recursive: true }),
       fileSystem.writeFileString(path.join(workspaceRoot, "AGENTS.md"), instructions),
       fileSystem.writeFileString(path.join(workspaceRoot, "CLAUDE.md"), instructions),
-    ]).pipe(Effect.mapError(() => failure("Could not prepare the central session's folder.")));
+    ]).pipe(Effect.mapError(() => failure("Could not prepare Keeper's folder.")));
     const id = yield* uuid;
     const bootstrapped = yield* projects
       .bootstrap({
@@ -263,7 +263,7 @@ export const make = Effect.gen(function* () {
           ProjectConflictError: (conflict) =>
             Effect.succeed({ project: { id: conflict.conflictingProjectId } }),
         }),
-        Effect.mapError(() => failure("Could not create the central session's project.")),
+        Effect.mapError(() => failure("Could not create Keeper's project.")),
       );
     return bootstrapped.project.id;
   });
@@ -288,7 +288,7 @@ export const make = Effect.gen(function* () {
     );
     const model = provider?.models[0];
     if (provider === undefined || model === undefined) {
-      return yield* failure("Set up a provider in Settings before opening the central session.");
+      return yield* failure("Set up a provider in Settings before opening Keeper.");
     }
     return {
       modelSelection: { instanceId: provider.instanceId, model: model.slug },
@@ -302,10 +302,10 @@ export const make = Effect.gen(function* () {
       const threadId = ThreadId.make(`hearth-central-${generation}`);
       const shell = yield* threads
         .getThreadShell(threadId)
-        .pipe(Effect.mapError(() => failure("Could not read the central session.")));
+        .pipe(Effect.mapError(() => failure("Could not read Keeper.")));
       if (shell === null || shell.deletedAt === null) return threadId;
     }
-    return yield* failure("Could not choose a thread for the central session.");
+    return yield* failure("Could not choose a thread for Keeper.");
   });
 
   const openCentral = Effect.gen(function* () {
@@ -328,7 +328,7 @@ export const make = Effect.gen(function* () {
           commandId: CommandId.make(`hearth-central:${threadId}`),
           threadId,
           projectId,
-          title: "Central session",
+          title: "Keeper",
           titleRenamed: true,
           modelSelection: model.modelSelection,
           runtimeMode: model.runtimeMode,
@@ -337,7 +337,7 @@ export const make = Effect.gen(function* () {
           createdBy: "user",
           creationSource: "web",
         })
-        .pipe(Effect.mapError(() => failure("Could not start the central session.")));
+        .pipe(Effect.mapError(() => failure("Could not start Keeper.")));
     } else {
       yield* reopen(threadId, shell.archivedAt);
     }

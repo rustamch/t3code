@@ -267,7 +267,7 @@ function HearthContent({ environmentId }: { environmentId: EnvironmentId }) {
       openThread(environmentId, opened.value.threadId);
       return;
     }
-    setError(failureMessage(opened, gt("Could not open the central session.")));
+    setError(failureMessage(opened, gt("Could not open Keeper.")));
   };
   const value = AsyncResult.getOrElse(result, () => null);
   if (value === null) {
@@ -293,10 +293,10 @@ function HearthContent({ environmentId }: { environmentId: EnvironmentId }) {
       <section className="flex items-center justify-between gap-4 rounded-lg border border-border p-4">
         <div className="min-w-0">
           <h2 className="font-medium">
-            <T>Central session</T>
+            <T>Keeper</T>
           </h2>
           <p className="text-muted-foreground text-sm">
-            <T>One thread above every project.</T>
+            <T>Your main thread for everything.</T>
           </p>
           {error ? <p className="mt-1 text-destructive-foreground text-xs">{error}</p> : null}
         </div>
@@ -312,7 +312,7 @@ function HearthContent({ environmentId }: { environmentId: EnvironmentId }) {
         </h2>
         {groups.length === 0 ? (
           <p className="text-muted-foreground text-sm">
-            <T>No projects yet. Ask the central session to create one.</T>
+            <T>No projects yet. Ask Keeper to create one.</T>
           </p>
         ) : (
           groups.map((group) => (

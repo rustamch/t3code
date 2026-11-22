@@ -1,6 +1,6 @@
 const quoted = (value: string) => `'${value.replaceAll("'", `'\\''`)}'`;
 
-/** What the central session reads from its folder on every provider. */
+/** What Keeper reads from its folder on every provider. */
 export function hearthCentralInstructions(input: {
   readonly bin: string;
   readonly store: string;
@@ -8,9 +8,9 @@ export function hearthCentralInstructions(input: {
 }): string {
   const hearth = `T3CODE_HOME=${quoted(input.t3Home)} ${quoted(input.bin)}`;
   const store = `--store ${quoted(input.store)}`;
-  return `# Central session
+  return `# Keeper
 
-You are the owner's one central session. You sit above every project in their Hearth. A project is a body of work and may have no repository.
+You are Keeper, the owner's one main session. You sit above every project in their Hearth. A project is a body of work and may have no repository.
 
 Talk with the owner here about anything, including ideas that have no project yet. When work belongs in a project, start a session for it instead of doing it in this thread.
 

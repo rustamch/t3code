@@ -29,7 +29,7 @@ const DOT_CLASS_NAME = {
   working: "bg-info animate-pulse",
 } as const;
 
-/** The one thread above every project, always first in the sidebar. */
+/** Keeper, the one thread above every project, always first in the sidebar. */
 export function SidebarCentralSession(props: {
   readonly threads: readonly EnvironmentThreadShell[];
   readonly routeThreadKey: string | null;
@@ -108,7 +108,7 @@ export function SidebarCentralSession(props: {
         <FlameIcon className="size-3.5" />
       </span>
       <span className="min-w-0 flex-1 truncate font-semibold text-sidebar-foreground text-sm">
-        {gt("Central session")}
+        {gt("Keeper")}
       </span>
       {dot ? (
         <span className={cn("size-2 shrink-0 rounded-full", DOT_CLASS_NAME[dot])} aria-hidden />
