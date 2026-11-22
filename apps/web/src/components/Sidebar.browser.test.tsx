@@ -94,6 +94,7 @@ describe("sidebar header new thread", () => {
     __setClientSettingsForTests({
       ...DEFAULT_CLIENT_SETTINGS,
       boringSidebarEnabled: scenario.mode === "boring",
+      hearthSidebarDefaultsApplied: true,
     });
     const projects = [project("active"), project("idle")].slice(0, scenario.count);
     const currentProjectRef = {
@@ -371,6 +372,13 @@ describe("sidebar thread menu", () => {
 describe("sidebar settled pagination", () => {
   it("keeps the viewport in place when showing more settled threads", async () => {
     using stack = new DisposableStack();
+    const previousSettings = getClientSettings();
+    stack.defer(() => __setClientSettingsForTests(previousSettings));
+    __setClientSettingsForTests({
+      ...DEFAULT_CLIENT_SETTINGS,
+      boringSidebarEnabled: false,
+      hearthSidebarDefaultsApplied: true,
+    });
     const style = document.createElement("style");
     style.textContent = appCss;
     document.head.append(style);

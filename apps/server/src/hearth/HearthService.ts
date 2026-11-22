@@ -2,7 +2,10 @@ import {
   CommandId,
   HearthError,
   HearthOverview,
+  HearthKeeperPrompt,
   type HearthLaunchInput,
+  type HearthOpenLeadInput,
+  type HearthSaveKeeperPromptInput,
   type HearthOverview as HearthOverviewDocument,
   type HearthOverviewResult,
   ProjectId,
@@ -30,6 +33,9 @@ import * as ServerSettings from "../serverSettings.ts";
 import { hearthCentralInstructions } from "./hearthInstructions.ts";
 
 const decodeOverview = Schema.decodeUnknownEffect(Schema.fromJsonString(HearthOverview));
+const decodeKeeperPrompt = Schema.decodeUnknownEffect(Schema.fromJsonString(HearthKeeperPrompt));
+const decodeSynced = Schema.decodeUnknownOption(Schema.fromJsonString(Schema.Array(Schema.String)));
+const encodeSynced = Schema.encodeSync(Schema.fromJsonString(Schema.Array(Schema.String)));
 const decodeLaunched = Schema.decodeUnknownEffect(
   Schema.fromJsonString(Schema.Struct({ ref: Schema.String })),
 );
@@ -155,63 +161,110 @@ export const make = Effect.gen(function* () {
     );
   });
 
-  // A marker, so a Random project the owner deleted stays deleted.
-  const randomMarker = path.join(config.baseDir, "hearth", "random-project-created");
+  // Which Hearth projects already got a T3 project, so one the owner removes stays removed.
+  const syncedFile = path.join(config.baseDir, "hearth", "synced-projects.json");
+  const legacyRandomMarker = path.join(config.baseDir, "hearth", "random-project-created");
 
-  const ensureRandomProject = Effect.fn("HearthService.ensureRandomProject")(function* (
-    current: HearthOverviewDocument,
+  const readSynced = Effect.gen(function* () {
+    const text = yield* fileSystem
+      .readFileString(syncedFile)
+      .pipe(Effect.orElseSucceed(() => "[]"));
+    const ids = new Set(Option.getOrElse(decodeSynced(text), () => [] as ReadonlyArray<string>));
+    const legacy = yield* fileSystem
+      .exists(legacyRandomMarker)
+      .pipe(Effect.orElseSucceed(() => false));
+    if (legacy) ids.add(RANDOM_PROJECT_ID);
+    return ids;
+  });
+
+  const managedRoot = (id: string) =>
+    path.join(path.dirname(store), "plugins", "agents", "projects", id);
+
+  const expandHome = (value: string) =>
+    value.startsWith("~/") ? path.join(home, value.slice(2)) : value;
+
+  const registerRoot = Effect.fn("HearthService.registerRoot")(function* (
+    workspaceRoot: string,
+    title: string,
   ) {
-    if (yield* fileSystem.exists(randomMarker)) return current;
-    if (!current.projects.some((project) => project.id === RANDOM_PROJECT_ID)) {
+    const id = yield* uuid;
+    const bootstrapped = yield* projects
+      .bootstrap({
+        commandId: CommandId.make(`hearth-project:${id}`),
+        projectId: ProjectId.make(id),
+        title,
+        workspaceRoot,
+      })
+      .pipe(
+        Effect.catchTags({
+          ProjectConflictError: (conflict) =>
+            Effect.succeed({ project: { id: conflict.conflictingProjectId } }),
+        }),
+      );
+    // Pinned folders stay in the sidebar with no threads; the owner can unpin one.
+    yield* projects.update({
+      commandId: CommandId.make(`hearth-project-pin:${id}`),
+      projectId: bootstrapped.project.id,
+      pinned: true,
+    });
+  });
+
+  const syncOverview = Effect.fn("HearthService.syncOverview")(function* (
+    first: HearthOverviewDocument,
+  ) {
+    const synced = yield* readSynced;
+    let current = first;
+    if (
+      !synced.has(RANDOM_PROJECT_ID) &&
+      !current.projects.some((project) => project.id === RANDOM_PROJECT_ID)
+    ) {
       // Without `--expect`, Hearth refuses to replace a note that already exists.
       yield* run(
         ["write", `projects/${RANDOM_PROJECT_ID}.md`, "--store", store],
         READ_TIMEOUT,
         RANDOM_PROJECT_NOTE,
       );
+      current = yield* readOverview;
     }
-    const workspaceRoot = path.join(
-      path.dirname(store),
-      "plugins",
-      "agents",
-      "projects",
-      RANDOM_PROJECT_ID,
-    );
-    yield* fileSystem.makeDirectory(workspaceRoot, { recursive: true });
-    const id = yield* uuid;
-    const bootstrapped = yield* projects
-      .bootstrap({
-        commandId: CommandId.make(`hearth-random-project:${id}`),
-        projectId: ProjectId.make(id),
-        title: "Random",
-        workspaceRoot,
-      })
-      .pipe(
-        Effect.catchTags({
-          ProjectConflictError: (conflict) =>
-            Effect.succeed({ project: { id: conflict.conflictingProjectId }, created: false }),
-        }),
-      );
-    if (bootstrapped.created) {
-      yield* projects.update({
-        commandId: CommandId.make(`hearth-random-pin:${id}`),
-        projectId: bootstrapped.project.id,
-        pinned: true,
-      });
+    let changed = false;
+    for (const project of current.projects) {
+      if (synced.has(project.id) || project.status === "done" || project.status === "dropped") {
+        continue;
+      }
+      const paths = project.paths.map(expandHome);
+      if (paths.length === 0) {
+        const root = managedRoot(project.id);
+        yield* fileSystem.makeDirectory(root, { recursive: true });
+        yield* registerRoot(root, project.title);
+      } else {
+        const present = yield* Effect.filter(paths, (candidate) => fileSystem.exists(candidate));
+        // A checkout that is not on this machine is retried on a later sync.
+        if (present.length !== paths.length) continue;
+        for (const root of present) {
+          yield* registerRoot(
+            root,
+            paths.length === 1 ? project.title : `${project.title} (${path.basename(root)})`,
+          );
+        }
+      }
+      synced.add(project.id);
+      changed = true;
     }
-    yield* fileSystem.makeDirectory(path.dirname(randomMarker), { recursive: true });
-    yield* fileSystem.writeFileString(randomMarker, "");
-    return yield* readOverview;
+    if (changed) {
+      yield* fileSystem.makeDirectory(path.dirname(syncedFile), { recursive: true });
+      yield* fileSystem.writeFileString(syncedFile, encodeSynced([...synced].toSorted()));
+    }
   });
 
-  const overview: Effect.Effect<HearthOverviewResult> = readOverview.pipe(
-    Effect.flatMap((value) =>
-      ensureRandomProject(value).pipe(
-        Effect.catchCause((cause) =>
-          Effect.logWarning("Could not create the Random project", cause).pipe(Effect.as(value)),
-        ),
-      ),
+  const sync = readOverview.pipe(
+    Effect.flatMap(syncOverview),
+    Effect.as({ synced: true }),
+    Effect.catchCause((cause) =>
+      Effect.logDebug("Could not sync Hearth projects", cause).pipe(Effect.as({ synced: false })),
     ),
+  );
+
+  const overview: Effect.Effect<HearthOverviewResult> = readOverview.pipe(
     Effect.map((value) => ({ state: "ready" as const, overview: value })),
     Effect.catch((error: HearthError) =>
       Effect.succeed({ state: "unavailable" as const, reason: error.message }),
@@ -238,18 +291,34 @@ export const make = Effect.gen(function* () {
           Effect.mapError(() => failure("Could not reopen Keeper.")),
         );
 
-  const centralProject = Effect.gen(function* () {
-    const workspaceRoot = path.join(config.baseDir, "hearth", "central");
+  const readKeeperPrompt = run(["agents", "prompt", "--store", store], READ_TIMEOUT).pipe(
+    Effect.flatMap((output) =>
+      decodeKeeperPrompt(output).pipe(
+        Effect.mapError(() => failure("This version of hearth printed an unknown prompt.")),
+      ),
+    ),
+  );
+
+  const writeKeeperFiles = Effect.fn("HearthService.writeKeeperFiles")(function* (
+    workspaceRoot: string,
+  ) {
+    const prompt = yield* readKeeperPrompt;
     const instructions = hearthCentralInstructions({
       bin: yield* bin,
       store,
       t3Home: config.baseDir,
+      prompt: prompt.text,
     });
     yield* Effect.all([
       fileSystem.makeDirectory(workspaceRoot, { recursive: true }),
       fileSystem.writeFileString(path.join(workspaceRoot, "AGENTS.md"), instructions),
       fileSystem.writeFileString(path.join(workspaceRoot, "CLAUDE.md"), instructions),
     ]).pipe(Effect.mapError(() => failure("Could not prepare Keeper's folder.")));
+  });
+
+  const centralProject = Effect.gen(function* () {
+    const workspaceRoot = path.join(config.baseDir, "hearth", "central");
+    yield* writeKeeperFiles(workspaceRoot);
     const id = yield* uuid;
     const bootstrapped = yield* projects
       .bootstrap({
@@ -345,7 +414,99 @@ export const make = Effect.gen(function* () {
     return { threadId };
   });
 
-  const launch = Effect.fn("HearthService.launch")(function* (input: HearthLaunchInput) {
+  const unusedCentralThread = Effect.gen(function* () {
+    for (let generation = 0; generation < MAX_CENTRAL_GENERATIONS; generation += 1) {
+      const threadId = ThreadId.make(`hearth-central-${generation}`);
+      const shell = yield* threads
+        .getThreadShell(threadId)
+        .pipe(Effect.mapError(() => failure("Could not read Keeper.")));
+      if (shell === null) return threadId;
+    }
+    return yield* failure("Could not choose a thread for Keeper.");
+  });
+
+  // The new Keeper is in place before the old one is archived, so a failure leaves one running.
+  const restartKeeper = Effect.gen(function* () {
+    const current = yield* readOverview;
+    const previousId = threadOfRef(current.coordinator);
+    const previous = previousId === null ? null : yield* liveThread(previousId);
+    const projectId = yield* centralProject;
+    const threadId = yield* unusedCentralThread;
+    const model =
+      previous === null
+        ? yield* centralModel
+        : { modelSelection: previous.modelSelection, runtimeMode: previous.runtimeMode };
+    yield* launches
+      .launch({
+        commandId: CommandId.make(`hearth-central:${threadId}`),
+        threadId,
+        projectId,
+        title: "Keeper",
+        titleRenamed: true,
+        modelSelection: model.modelSelection,
+        runtimeMode: model.runtimeMode,
+        interactionMode: "default",
+        workspaceStrategy: { type: "root" },
+        createdBy: "user",
+        creationSource: "web",
+      })
+      .pipe(Effect.mapError(() => failure("Could not start Keeper.")));
+    yield* run(["config", "--store", store, "coordinator", `t3:${threadId}`], READ_TIMEOUT);
+    if (previous !== null && previousId !== null && previous.archivedAt === null) {
+      const id = yield* uuid;
+      yield* threads
+        .dispatch({
+          type: "thread.archive",
+          commandId: CommandId.make(`hearth-central-archive:${id}`),
+          threadId: previousId,
+        })
+        .pipe(
+          Effect.asVoid,
+          Effect.catchCause((cause) =>
+            Effect.logWarning("Could not archive the previous Keeper", cause),
+          ),
+        );
+    }
+    return { threadId };
+  });
+
+  const saveKeeperPrompt = Effect.fn("HearthService.saveKeeperPrompt")(function* (
+    input: HearthSaveKeeperPromptInput,
+  ) {
+    yield* run(
+      [
+        "write",
+        "keeper.md",
+        "--store",
+        store,
+        ...(input.version === null ? [] : ["--expect", String(input.version)]),
+      ],
+      READ_TIMEOUT,
+      input.text,
+    );
+    yield* writeKeeperFiles(path.join(config.baseDir, "hearth", "central"));
+    return yield* readKeeperPrompt;
+  });
+
+  const openLead = Effect.fn("HearthService.openLead")(function* (input: HearthOpenLeadInput) {
+    const current = yield* readOverview;
+    const project = current.projects.find((item) => item.id === input.project);
+    if (project === undefined) return yield* failure(`No Hearth project \`${input.project}\`.`);
+    const existing = threadOfRef(project.lead);
+    if (existing !== null && (yield* liveThread(existing)) !== null) return { threadId: existing };
+    return yield* launchSession({
+      project: project.id,
+      title: `${project.title} lead`,
+      task: "Take the lead on this project. Read its note and decisions, then tell the owner where it stands and what you would do next.",
+      lead: true,
+    });
+  });
+
+  const launch = (input: HearthLaunchInput) => launchSession({ ...input, lead: false });
+
+  const launchSession = Effect.fn("HearthService.launch")(function* (
+    input: HearthLaunchInput & { readonly lead: boolean },
+  ) {
     const output = yield* run(
       [
         "agents",
@@ -355,6 +516,7 @@ export const make = Effect.gen(function* () {
         `--project=${input.project}`,
         `--title=${input.title}`,
         `--task=${input.task}`,
+        ...(input.lead ? ["--lead"] : []),
       ],
       LAUNCH_TIMEOUT,
     );
@@ -366,5 +528,14 @@ export const make = Effect.gen(function* () {
     return { threadId };
   });
 
-  return { overview, openCentral, launch } as const;
+  return {
+    overview,
+    sync,
+    openCentral,
+    restartKeeper,
+    readKeeperPrompt,
+    saveKeeperPrompt,
+    openLead,
+    launch,
+  } as const;
 });

@@ -1677,6 +1677,37 @@ export function createServerEnvironmentAtoms<R, E>(
       label: "environment-data:hearth:launch",
       tag: WS_METHODS.hearthLaunch,
     }),
+    // Keeps T3 projects in step with Hearth's while the sidebar is open.
+    hearthSync: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:hearth:sync",
+      tag: WS_METHODS.hearthSync,
+      staleTimeMs: 15_000,
+      refreshIntervalMs: 30_000,
+      idleTtlMs: 0,
+    }),
+    hearthRestartKeeper: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:hearth:restart-keeper",
+      tag: WS_METHODS.hearthRestartKeeper,
+      concurrency: { mode: "singleFlight", key: ({ environmentId }) => environmentId },
+    }),
+    hearthReadKeeperPrompt: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:hearth:read-keeper-prompt",
+      tag: WS_METHODS.hearthReadKeeperPrompt,
+      staleTimeMs: 0,
+      idleTtlMs: 0,
+    }),
+    hearthSaveKeeperPrompt: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:hearth:save-keeper-prompt",
+      tag: WS_METHODS.hearthSaveKeeperPrompt,
+    }),
+    hearthOpenLead: createEnvironmentRpcCommand(runtime, {
+      label: "environment-data:hearth:open-lead",
+      tag: WS_METHODS.hearthOpenLead,
+      concurrency: {
+        mode: "singleFlight",
+        key: ({ environmentId, input }) => JSON.stringify([environmentId, input.project]),
+      },
+    }),
     searchAcpRegistry: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:server:acp-registry:search",
       tag: WS_METHODS.serverSearchAcpRegistry,

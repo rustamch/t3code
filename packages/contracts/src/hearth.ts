@@ -12,6 +12,7 @@ export const HearthProject = Schema.Struct({
   paths: Schema.Array(Schema.String),
   now: NullableString,
   path: Schema.String,
+  lead: NullableString,
 });
 export type HearthProject = typeof HearthProject.Type;
 
@@ -25,6 +26,7 @@ export const HearthAgent = Schema.Struct({
   branch: NullableString,
   launched_at: Schema.String,
   path: Schema.String,
+  role: NullableString,
 });
 export type HearthAgent = typeof HearthAgent.Type;
 
@@ -64,6 +66,24 @@ export const HearthLaunchInput = Schema.Struct({
   task: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(20_000)),
 });
 export type HearthLaunchInput = typeof HearthLaunchInput.Type;
+
+export const HearthOpenLeadInput = Schema.Struct({
+  project: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(500)),
+});
+export type HearthOpenLeadInput = typeof HearthOpenLeadInput.Type;
+
+/** The owner's prompt for Keeper, the note `keeper.md`. A null version means it has no note yet. */
+export const HearthKeeperPrompt = Schema.Struct({
+  text: Schema.String,
+  version: Schema.NullOr(Schema.Number),
+});
+export type HearthKeeperPrompt = typeof HearthKeeperPrompt.Type;
+
+export const HearthSaveKeeperPromptInput = Schema.Struct({
+  text: Schema.String.check(Schema.isMaxLength(100_000)),
+  version: Schema.NullOr(Schema.Number),
+});
+export type HearthSaveKeeperPromptInput = typeof HearthSaveKeeperPromptInput.Type;
 
 export const HearthThreadResult = Schema.Struct({ threadId: ThreadId });
 export type HearthThreadResult = typeof HearthThreadResult.Type;

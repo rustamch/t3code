@@ -11,6 +11,7 @@ const project = (id: string, status = "active") => ({
   paths: [],
   now: null,
   path: `projects/${id}.md`,
+  lead: null,
 });
 const agent = (projectId: string, status: HearthAgent["status"]): HearthAgent => ({
   ref: `t3:${projectId}`,
@@ -22,6 +23,7 @@ const agent = (projectId: string, status: HearthAgent["status"]): HearthAgent =>
   branch: null,
   launched_at: "2026-11-22T00:00:00Z",
   path: `agents/${projectId}.md`,
+  role: null,
 });
 
 describe("groupHearthOverview", () => {

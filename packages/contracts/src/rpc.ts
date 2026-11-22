@@ -48,8 +48,11 @@ import * as RpcMiddleware from "effect/rpc/RpcMiddleware";
 import { IsoDateTime, NonNegativeInt, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import {
   HearthError,
+  HearthKeeperPrompt,
   HearthLaunchInput,
+  HearthOpenLeadInput,
   HearthOverviewResult,
+  HearthSaveKeeperPromptInput,
   HearthThreadResult,
 } from "./hearth.ts";
 import { SecretSourceCheckResult } from "./settingsSecretValue.ts";
@@ -637,6 +640,11 @@ export const WS_METHODS = {
   hearthOverview: "hearth.overview",
   hearthOpenCentral: "hearth.openCentral",
   hearthLaunch: "hearth.launch",
+  hearthSync: "hearth.sync",
+  hearthRestartKeeper: "hearth.restartKeeper",
+  hearthReadKeeperPrompt: "hearth.readKeeperPrompt",
+  hearthSaveKeeperPrompt: "hearth.saveKeeperPrompt",
+  hearthOpenLead: "hearth.openLead",
 
   cloudGetRelayClientStatus: "cloud.getRelayClientStatus",
   cloudInstallRelayClient: "cloud.installRelayClient",
@@ -2387,6 +2395,36 @@ const WsHearthLaunchRpc = Rpc.make(WS_METHODS.hearthLaunch, {
   error: Schema.Union([HearthError, EnvironmentAuthorizationError]),
 });
 
+const WsHearthSyncRpc = Rpc.make(WS_METHODS.hearthSync, {
+  payload: Schema.Struct({}),
+  success: Schema.Struct({ synced: Schema.Boolean }),
+  error: EnvironmentAuthorizationError,
+});
+
+const WsHearthRestartKeeperRpc = Rpc.make(WS_METHODS.hearthRestartKeeper, {
+  payload: Schema.Struct({}),
+  success: HearthThreadResult,
+  error: Schema.Union([HearthError, EnvironmentAuthorizationError]),
+});
+
+const WsHearthReadKeeperPromptRpc = Rpc.make(WS_METHODS.hearthReadKeeperPrompt, {
+  payload: Schema.Struct({}),
+  success: HearthKeeperPrompt,
+  error: Schema.Union([HearthError, EnvironmentAuthorizationError]),
+});
+
+const WsHearthSaveKeeperPromptRpc = Rpc.make(WS_METHODS.hearthSaveKeeperPrompt, {
+  payload: HearthSaveKeeperPromptInput,
+  success: HearthKeeperPrompt,
+  error: Schema.Union([HearthError, EnvironmentAuthorizationError]),
+});
+
+const WsHearthOpenLeadRpc = Rpc.make(WS_METHODS.hearthOpenLead, {
+  payload: HearthOpenLeadInput,
+  success: HearthThreadResult,
+  error: Schema.Union([HearthError, EnvironmentAuthorizationError]),
+});
+
 const WsSubscribeAuthAccessRpc = Rpc.make(WS_METHODS.subscribeAuthAccess, {
   payload: Schema.Struct({}),
   success: AuthAccessStreamEvent,
@@ -2501,6 +2539,11 @@ export const WsRpcGroup = RpcGroup.make(
   WsHearthOverviewRpc,
   WsHearthOpenCentralRpc,
   WsHearthLaunchRpc,
+  WsHearthSyncRpc,
+  WsHearthRestartKeeperRpc,
+  WsHearthReadKeeperPromptRpc,
+  WsHearthSaveKeeperPromptRpc,
+  WsHearthOpenLeadRpc,
   WsServerReportClientActivityRpc,
   WsCloudGetRelayClientStatusRpc,
   WsCloudInstallRelayClientRpc,
