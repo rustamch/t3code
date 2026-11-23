@@ -362,7 +362,7 @@ function Sidebar({
             <div className="absolute inset-0 bg-popover" data-slot="sidebar-sheet-surface" />
             <div
               className={cn(
-                "relative flex h-full w-full flex-col bg-sidebar surface-grain pb-safe pt-safe",
+                "relative flex h-full w-full flex-col [background:inherit] pb-safe pt-safe",
                 SIDEBAR_TITLEBAR_CONTROL_SIZE,
                 side === "left" ? "pl-safe" : "pr-safe",
               )}
