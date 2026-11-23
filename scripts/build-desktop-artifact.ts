@@ -2903,7 +2903,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       },
       protocols: [
         {
-          name: "T3 Hearth",
+          name: "T3 Forge",
           schemes: ["t3hearth"],
         },
         {
@@ -2956,7 +2956,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       maintainer: "T3 Tools <hello@t3.codes>",
       protocols: [
         {
-          name: "T3 Hearth",
+          name: "T3 Forge",
           schemes: ["t3hearth"],
         },
       ],
