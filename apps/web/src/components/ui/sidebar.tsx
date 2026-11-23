@@ -358,9 +358,11 @@ function Sidebar({
                 <T>Displays the mobile sidebar.</T>
               </SheetDescription>
             </SheetHeader>
+            {/* An opaque layer, so a translucent theme sidebar can't show the chat underneath. */}
+            <div className="absolute inset-0 bg-popover" data-slot="sidebar-sheet-surface" />
             <div
               className={cn(
-                "flex h-full w-full flex-col pb-safe pt-safe",
+                "relative flex h-full w-full flex-col [background:inherit] pb-safe pt-safe",
                 SIDEBAR_TITLEBAR_CONTROL_SIZE,
                 side === "left" ? "pl-safe" : "pr-safe",
               )}
