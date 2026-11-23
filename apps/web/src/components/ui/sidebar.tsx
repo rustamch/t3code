@@ -359,17 +359,16 @@ function Sidebar({
               </SheetDescription>
             </SheetHeader>
             {/* An opaque layer, so a translucent theme sidebar can't show the chat underneath. */}
-            <div className="h-full w-full bg-popover" data-slot="sidebar-sheet-surface">
-              <div
-                className={cn(
-                  "flex h-full w-full flex-col bg-sidebar surface-grain pb-safe pt-safe",
-                  SIDEBAR_TITLEBAR_CONTROL_SIZE,
-                  side === "left" ? "pl-safe" : "pr-safe",
-                )}
-                {...props}
-              >
-                {children}
-              </div>
+            <div className="absolute inset-0 bg-popover" data-slot="sidebar-sheet-surface" />
+            <div
+              className={cn(
+                "relative flex h-full w-full flex-col bg-sidebar surface-grain pb-safe pt-safe",
+                SIDEBAR_TITLEBAR_CONTROL_SIZE,
+                side === "left" ? "pl-safe" : "pr-safe",
+              )}
+              {...props}
+            >
+              {children}
             </div>
           </SheetPopup>
         </Sheet>
